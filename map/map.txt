@@ -1,0 +1,7 @@
+ERROR MSG
+- The map must be composed of only 0, 1, N, S, E, W ✅
+- There is mutiple player's start position ✅
+- The map must be surrounded by walls
+- 
+
+SPACE ISSUE ON MAP
