@@ -87,12 +87,5 @@ void draw_rays(t_var *data)
         ray.ra = normalize_radians(ray.ra);
         ray.r++;
     }
-    int i;
-
-    i = 0;
-    while (i < data->num_sprites)
-    {
-        draw_sprites(data, &data->sprites[i]);
-        i++;
-    }
+    draw_sprites(data);
 }

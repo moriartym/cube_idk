@@ -30,6 +30,7 @@ SRCS_NORMAL = get_next_line/get_next_line.c \
 		raycast/raycast_3d.c \
 		raycast/raycast_helper.c \
 		raycast/enemy_sprites.c \
+		enemy/enemy.c \
 
 OBJS = $(SRCS_NORMAL:.c=.o)
 

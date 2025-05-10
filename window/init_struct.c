@@ -8,19 +8,69 @@ void init_player(t_var *data)
     data->player.pdx = cosf(data->player.pa);
 }
 
+
 void init_sprites(t_var *data)
 {
-    data->num_sprites = 7;
+    int empty_spaces = 0;
+
+    for (int y = 0; y < data->map.height; y++)
+    {
+        for (int x = 0; x < data->map.width; x++)
+        {
+            if (data->map.arr[y][x] == '0')
+                empty_spaces++;
+        }
+    }
+
+    int num_enemies = empty_spaces / 30;
+    printf("num ene %d %d\n", num_enemies, empty_spaces );
+    data->num_sprites = num_enemies;
     data->sprites = malloc(sizeof(t_sprite) * data->num_sprites);
-    *data->sprites = (t_sprite){0};
-    data->sprites[0] = (t_sprite){.type = 1, .x =  48.0, .y = 48.0, .z = 0};// z not used
-    data->sprites[1] = (t_sprite){.type = 1, .x =  48.0, .y = 80.0, .z = 0};// z not used
-    data->sprites[2] = (t_sprite){.type = 1, .x =  48.0, .y = 112.0, .z = 0};// z not used
-    data->sprites[3] = (t_sprite){.type = 1, .x =  48.0, .y = 144.0, .z = 0};// z not used
-    data->sprites[4] = (t_sprite){.type = 1, .x =  48.0, .y = 176.0, .z = 0};// z not used
-    data->sprites[5] = (t_sprite){.type = 1, .x =  48.0, .y = 208.0, .z = 0};// z not used
-    data->sprites[6] = (t_sprite){.type = 1, .x =  48.0, .y = 240.0, .z = 0};// z not used
+
+    srand(time(NULL));
+
+    int count = 0;
+    int max_attempts = 1000;
+    int attempts = 0;
+
+    int player_tile_x = (int)(data->player.px / 32);
+    int player_tile_y = (int)(data->player.py / 32);
+
+    while (count < num_enemies && attempts < max_attempts)
+    {
+        int rx = rand() % data->map.width;
+        int ry = rand() % data->map.height;
+        attempts++;
+
+        if (data->map.arr[ry][rx] != '0')
+            continue;
+        // Must not be same x AND same y as player
+        if (rx == player_tile_x && ry == player_tile_y)
+            continue;
+
+        // Enforce at least 2 tiles distance in both directions
+        if (abs(rx - player_tile_x) < 2 || abs(ry - player_tile_y) < 2)
+            continue;
+
+        data->sprites[count++] = (t_sprite){
+            .type = 2,
+            .x = rx * 32 + 16,
+            .y = ry * 32 + 16,
+            .z = 0
+        };
+    }
+
+    data->num_sprites = count;
+
+    for (int i = 0; i < data->num_sprites; i++)
+    {
+        printf("Enemy %d: x = %f, y = %f, z = %f\n",
+               i, data->sprites[i].x, data->sprites[i].y, data->sprites[i].z);
+    }
 }
+
+
+
 
 void load_single_gif_frame(t_var *data, t_img *img, const char *path) {
     img->img = mlx_xpm_file_to_image(data->mlx, (char *)path, &img->width, &img->height);

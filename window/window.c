@@ -20,6 +20,7 @@ int render(t_var *data)
     create_minimap(data);
     draw_player(data);
     draw_rays(data);
+    draw_enemies_minimap(data);
     mlx_put_image_to_window(data->mlx, data->win, data->image.img, 0, 0);
     return (0);
 }

@@ -30,7 +30,34 @@ int is_wall_near(float x, float y, t_var *data, float margin) {
     );
 }
 
-//enemy stuck & enemy margin better // remeber enemy size change max margin how much u dont want it hit wall
+
+// Helper function to calculate distance between player and enemy
+float calculate_distance(t_var *data, t_sprite *sp) {
+    float dx = data->player.px - sp->x;
+    float dy = data->player.py - sp->y;
+    return sqrtf(dx * dx + dy * dy);
+}
+
+// Function to manually sort sprites by distance (descending order)
+void sort_sprites_by_distance(t_var *data) {
+    int num_sprites = data->num_sprites;
+    for (int i = 0; i < num_sprites - 1; i++) {
+        for (int j = i + 1; j < num_sprites; j++) {
+            // Calculate distances for both sprites
+            float dist_i = calculate_distance(data, &data->sprites[i]);
+            float dist_j = calculate_distance(data, &data->sprites[j]);
+
+            // Swap if the distance is greater for the first sprite (farthest first)
+            if (dist_i < dist_j) {
+                t_sprite temp = data->sprites[i];
+                data->sprites[i] = data->sprites[j];
+                data->sprites[j] = temp;
+            }
+        }
+    }
+}
+
+
 void move_enemy_towards_player(t_var *data, t_sprite *sp) {
     float dx = data->player.px - sp->x;
     float dy = data->player.py - sp->y;
@@ -40,35 +67,77 @@ void move_enemy_towards_player(t_var *data, t_sprite *sp) {
     dx /= dist;
     dy /= dist;
 
-    float speed = 0.3f;
-    float margin = 10.0f;
+    float speed = 0.2f;
+    float collision_margin = 5.0f; // Half of enemy size (10/2)
 
-    float new_x = sp->x + dx * speed;
-    float new_y = sp->y + dy * speed;
+    // Calculate desired movement
+    float desired_x = sp->x + dx * speed;
+    float desired_y = sp->y + dy * speed;
 
-    if (!is_wall_near(new_x, new_y, data, margin)) {
-        sp->x = new_x;
-        sp->y = new_y;
-    }
-    else if (!is_wall_near(sp->x + dx * speed, sp->y, data, margin)) {
-        sp->x += dx * speed;
-    }
-    else if (!is_wall_near(sp->x, sp->y + dy * speed, data, margin)) {
-        sp->y += dy * speed;
+    // Check direct path with dynamic margin
+    if (!is_wall_near(desired_x, desired_y, data, collision_margin)) {
+        sp->x = desired_x;
+        sp->y = desired_y;
+    } else {
+        // Calculate perpendicular directions for wall sliding
+        float perp_x1 = dy;
+        float perp_y1 = -dx;
+        float perp_x2 = -dy;
+        float perp_y2 = dx;
+
+        // Try first perpendicular direction
+        float slide_x = sp->x + perp_x1 * speed;
+        float slide_y = sp->y + perp_y1 * speed;
+        if (!is_wall_near(slide_x, slide_y, data, collision_margin)) {
+            sp->x = slide_x;
+            sp->y = slide_y;
+            return;
+        }
+
+        // Try second perpendicular direction
+        slide_x = sp->x + perp_x2 * speed;
+        slide_y = sp->y + perp_y2 * speed;
+        if (!is_wall_near(slide_x, slide_y, data, collision_margin)) {
+            sp->x = slide_x;
+            sp->y = slide_y;
+            return;
+        }
+
+        // Try pure X-axis movement
+        if (!is_wall_near(sp->x + dx * speed, sp->y, data, collision_margin)) {
+            sp->x += dx * speed;
+        }
+        // Try pure Y-axis movement
+        else if (!is_wall_near(sp->x, sp->y + dy * speed, data, collision_margin)) {
+            sp->y += dy * speed;
+        }
+        // Try reverse directions
+        else {
+            // Reverse X
+            if (!is_wall_near(sp->x - dx * speed, sp->y, data, collision_margin)) {
+                sp->x -= dx * speed;
+            }
+            // Reverse Y
+            else if (!is_wall_near(sp->x, sp->y - dy * speed, data, collision_margin)) {
+                sp->y -= dy * speed;
+            }
+        }
     }
 
-    // Collision with player
+    // Player collision check
     if (is_player_caught(sp, &data->player, 10.0f)) {
         printf("The player died\n");
-        // Optionally trigger game over here
+        // Handle game over
     }
 }
 
-
-
-void draw_sprites(t_var *data, t_sprite *sprite) {
-    if (data->num_sprites == 0)
+void draw_sprites(t_var *data) {
+    int num_sprites = data->num_sprites;
+    if (num_sprites == 0)
         return;
+
+    // Sort sprites by distance in descending order (farthest first)
+    sort_sprites_by_distance(data);
 
     // Update animation frame
     static const int anim_sequence[] = {0, 1, 2, 3, 4, 3, 2, 1, 0, 5, 6, 7, 8};
@@ -84,79 +153,83 @@ void draw_sprites(t_var *data, t_sprite *sprite) {
         gettimeofday(&data->last_anim_time, NULL);
     }
 
-    // Move enemy toward player
-    move_enemy_towards_player(data, sprite);
-    t_sprite *sp = sprite;
+    // Loop through sorted sprites
+    for (int i = 0; i < num_sprites; i++) {
+        t_sprite *sp = &data->sprites[i];
 
-    float sx = sp->x - data->player.px;
-    float sy = sp->y - data->player.py;
+        // Move enemy toward player
+        move_enemy_towards_player(data, sp);
 
-    float sin_pa = sin(-data->player.pa);
-    float cos_pa = cos(-data->player.pa);
+        float sx = sp->x - data->player.px;
+        float sy = sp->y - data->player.py;
 
-    float dx = sx * cos_pa - sy * sin_pa;
-    float dy = sx * sin_pa + sy * cos_pa;
+        float sin_pa = sin(-data->player.pa);
+        float cos_pa = cos(-data->player.pa);
 
-    if (dx <= 0.1f) return;
+        float dx = sx * cos_pa - sy * sin_pa;
+        float dy = sx * sin_pa + sy * cos_pa;
 
-    float fov_scale = (WINDOW_WIDTH / 2.0f) / tan(FOV / 2);
-    float proj_x = (dy * fov_scale / dx) + (WINDOW_WIDTH / 2.0f);
-    float sprite_height = (SPRITE_SIZE * fov_scale) / dx;
-    int sprite_size = (int)sprite_height;
+        if (dx <= 0.1f) continue;
 
-    int max_sprite_size = WINDOW_HEIGHT / 2;
-    float lineH = (TILE_SIZE * WINDOW_HEIGHT) / dx;
-    lineH = lineH > WINDOW_HEIGHT ? WINDOW_HEIGHT : lineH;
-    int floorY = (WINDOW_HEIGHT / 2) + (lineH / 2);
+        float fov_scale = (WINDOW_WIDTH / 2.0f) / tan(FOV / 2);
+        float proj_x = (dy * fov_scale / dx) + (WINDOW_WIDTH / 2.0f);
+        float sprite_height = (SPRITE_SIZE * fov_scale) / dx;
+        int sprite_size = (int)sprite_height;
 
-    int screen_x = (int)proj_x - sprite_size / 2;
-    int screen_y = (sprite_size > max_sprite_size)
-        ? floorY - max_sprite_size
-        : floorY - sprite_size;
+        int max_sprite_size = WINDOW_HEIGHT / 2;
+        float lineH = (TILE_SIZE * WINDOW_HEIGHT) / dx;
+        lineH = lineH > WINDOW_HEIGHT ? WINDOW_HEIGHT : lineH;
+        int floorY = (WINDOW_HEIGHT / 2) + (lineH / 2);
 
-    // Select current animation image
-    int frame = anim_sequence[data->current_anim_index];
-    t_img *cur_img = NULL;
-    switch (frame) {
-        case 0: cur_img = &data->gif.zero; break;
-        case 1: cur_img = &data->gif.one; break;
-        case 2: cur_img = &data->gif.two; break;
-        case 3: cur_img = &data->gif.three; break;
-        case 4: cur_img = &data->gif.four; break;
-        case 5: cur_img = &data->gif.five; break;
-        case 6: cur_img = &data->gif.six; break;
-        case 7: cur_img = &data->gif.seven; break;
-        case 8: cur_img = &data->gif.eight; break;
-        default: cur_img = &data->gif.zero; break;
-    }
+        int screen_x = (int)proj_x - sprite_size / 2;
+        int screen_y = (sprite_size > max_sprite_size)
+            ? floorY - max_sprite_size
+            : floorY - sprite_size;
 
-    // Draw the sprite
-    for (int x = 0; x < sprite_size; x++) {
-        int px = screen_x + x;
-        if (px < 0 || px >= WINDOW_WIDTH) continue;
+        // Select current animation image
+        int frame = anim_sequence[data->current_anim_index];
+        t_img *cur_img = NULL;
+        switch (frame) {
+            case 0: cur_img = &data->gif.zero; break;
+            case 1: cur_img = &data->gif.one; break;
+            case 2: cur_img = &data->gif.two; break;
+            case 3: cur_img = &data->gif.three; break;
+            case 4: cur_img = &data->gif.four; break;
+            case 5: cur_img = &data->gif.five; break;
+            case 6: cur_img = &data->gif.six; break;
+            case 7: cur_img = &data->gif.seven; break;
+            case 8: cur_img = &data->gif.eight; break;
+            default: cur_img = &data->gif.zero; break;
+        }
 
-        int ray_idx = (px * NUM_RAYS) / WINDOW_WIDTH;
-        if (ray_idx < 0 || ray_idx >= NUM_RAYS) continue;
-        if (dx > data->zbuffer[ray_idx]) continue;
+        // Draw the sprite
+        for (int x = 0; x < sprite_size; x++) {
+            int px = screen_x + x;
+            if (px < 0 || px >= WINDOW_WIDTH) continue;
 
-        for (int y = 0; y < sprite_size; y++) {
-            int py = screen_y + y;
-            if (py < 0 || py >= WINDOW_HEIGHT) continue;
+            int ray_idx = (px * NUM_RAYS) / WINDOW_WIDTH;
+            if (ray_idx < 0 || ray_idx >= NUM_RAYS) continue;
+            if (dx > data->zbuffer[ray_idx]) continue;
 
-            int tx = (x * cur_img->width) / sprite_size;
-            int ty = (y * cur_img->height) / sprite_size;
+            for (int y = 0; y < sprite_size; y++) {
+                int py = screen_y + y;
+                if (py < 0 || py >= WINDOW_HEIGHT) continue;
 
-            int offset = ty * cur_img->line_length + tx * (cur_img->bits_per_pixel / 8);
-            char *pixel = cur_img->addr + offset;
-            unsigned char b = pixel[0];
-            unsigned char g = pixel[1];
-            unsigned char r = pixel[2];
-            unsigned char a = pixel[3];
+                int tx = (x * cur_img->width) / sprite_size;
+                int ty = (y * cur_img->height) / sprite_size;
 
-            if (a != 0) continue;  // Skip transparent pixels
+                int offset = ty * cur_img->line_length + tx * (cur_img->bits_per_pixel / 8);
+                char *pixel = cur_img->addr + offset;
+                unsigned char b = pixel[0];
+                unsigned char g = pixel[1];
+                unsigned char r = pixel[2];
+                unsigned char a = pixel[3];
 
-            int color = (r << 16) | (g << 8) | b;
-            my_mlx_pixel_put(&data->image, px, py, color);
+                if (a != 0) continue;  // Skip transparent pixels
+
+                int color = (r << 16) | (g << 8) | b;
+                my_mlx_pixel_put(&data->image, px, py, color);
+            }
         }
     }
 }
