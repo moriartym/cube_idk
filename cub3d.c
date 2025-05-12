@@ -16,5 +16,3 @@ int main(int argc, char **argv)
 	if (create_visual(&cub))
 		return (1);
 }
-// space on map
-// what if map too big must decline 

@@ -1,1 +1,3 @@
 // win spawn in player spawn
+// space on map
+// what if map too big must decline 
