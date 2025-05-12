@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 	cub.map = (t_map){0};
 	cub.map.name = argv[1];
 	// cub.map.name = "map/valid.cub";
-	cub.map.name = "map/test.cub";
+	cub.map.name = "map/valid.cub";
 	if (extract_map(&cub.map) == 1)
 		return (1);
 	if (create_visual(&cub))

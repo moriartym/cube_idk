@@ -32,6 +32,8 @@ void draw_map(t_var *data, int x, int y, int draw_x, int draw_y)
         color = DOOR_COLOR;
     else if (tile == '3')
         color = DOOR_OPEN_COLOR;
+    else if (tile == '8')
+        color = WIN_COLOR;
     else
         color = EMPTY_COLOR;
     draw_tile(&data->image, draw_x, draw_y, color);

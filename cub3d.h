@@ -14,6 +14,7 @@
 #include <math.h>        //gcc your_program.c -lm
 #include <stdio.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include <float.h>
 
@@ -29,20 +30,21 @@
 
 /*------------------------------MACRO------------------------------*/
 
-#define WINDOW_WIDTH 960
-#define WINDOW_WIDTH_W 1920
-#define WINDOW_HEIGHT 544
-#define WINDOW_HEIGHT_W 1088
+#define WINDOW_WIDTH_W 960
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT_w 544
+#define WINDOW_HEIGHT 1088
 #define PLAYER_COLOR 0x00FF0000
 #define RAYCAST_COLOR 0x0000FF00
 #define WALL_COLOR 0x00AAAAAA
 #define DOOR_COLOR 0x8B4513
 #define DOOR_OPEN_COLOR 0xA52A2A
 #define EMPTY_COLOR 0x404040
+#define WIN_COLOR 0xFFD700
 
-# define MINIMAP_SIZE 128
+# define MINIMAP_SIZE_W 128
 # define MINIMAP_TILE 8
-# define MINIMAP_SIZE_W 256
+# define MINIMAP_SIZE 256
 
 #define STRIP_WIDTH 2
 #define CEILING_COLOR 0x444444
@@ -72,6 +74,9 @@
 
 /*------------------------------STRUCT------------------------------*/
 
+typedef struct {
+    int x, y;
+} Point;
 
 typedef enum	direction
 {
@@ -116,14 +121,6 @@ typedef struct	cub3d
 {
 	t_map	map;
 }				t_cub;
-
-// typedef struct s_img {
-//     void    *img;
-//     char    *addr;
-//     int     bits_per_pixel;
-//     int     line_length;
-//     int     endian;
-// }   t_img;
 
 typedef struct s_img {
     void *img;

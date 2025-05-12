@@ -7,7 +7,7 @@ bool is_wall(t_map *map, int x, int y)
     if (x < 0 || x >= (int)ft_strlen(map->arr[y]))
         return false;
     char c = map->arr[y][x];
-    return (c == '1' || c == '2');
+    return (c == '1' || c == '2' || c == '8');
 }
 
 
