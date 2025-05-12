@@ -205,7 +205,8 @@ void place_winning_tiles(t_var *data) {
         while (front < back) {
             Point current = queue[front++];
 
-            if (data->map.arr[current.y][current.x] == '0') {
+            // Exclude player spawn from reachable zeros
+            if (data->map.arr[current.y][current.x] == '0' && !(current.x == px && current.y == py)) {
                 reachable_zeros[count++] = current;
             }
 
@@ -227,7 +228,12 @@ void place_winning_tiles(t_var *data) {
             Point selected = reachable_zeros[index];
             data->map.arr[selected.y][selected.x] = '8';
         } else {
-            printf("No reachable '0' tiles to place the winning tile.\n");
+            // Check if the only reachable '0' is the player's spawn
+            if (data->map.arr[py][px] == '0') {
+                printf("Sorry, no winning tiles for this game.\n");
+            } else {
+                printf("No reachable '0' tiles to place the winning tile.\n");
+            }
         }
 
         free(reachable_zeros);
@@ -235,7 +241,6 @@ void place_winning_tiles(t_var *data) {
         printf("No reachable area to place the winning tile.\n");
     }
 }
-
 void init_all(t_var *data, t_cub *cube)
 {
     data->mlx = mlx_init();
