@@ -1,3 +1,6 @@
 // win spawn in player spawn
 // space on map
 // what if map too big must decline 
+
+// same enemy init sometimes on x and y check dont be same
+// enemy spawn too near

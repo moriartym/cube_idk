@@ -30,10 +30,10 @@
 
 /*------------------------------MACRO------------------------------*/
 
-#define WINDOW_WIDTH_W 960
-#define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT_w 544
-#define WINDOW_HEIGHT 1088
+#define WINDOW_WIDTH 960
+#define WINDOW_WIDTH_W 1920
+#define WINDOW_HEIGHT 544
+#define WINDOW_HEIGHT_ 1088
 #define PLAYER_COLOR 0x00FF0000
 #define RAYCAST_COLOR 0x0000FF00
 #define WALL_COLOR 0x00AAAAAA
@@ -42,9 +42,9 @@
 #define EMPTY_COLOR 0x404040
 #define WIN_COLOR 0xFFD700
 
-# define MINIMAP_SIZE_W 128
+# define MINIMAP_SIZE 128
 # define MINIMAP_TILE 8
-# define MINIMAP_SIZE 256
+# define MINIMAP_SIZE_W 256
 
 #define STRIP_WIDTH 2
 #define CEILING_COLOR 0x444444
@@ -152,6 +152,24 @@ typedef struct s_drawp {
 	int draw_y;
 }   t_drawp;
 
+typedef struct s_emini {
+    float ex;
+    float ey;
+    int enemy_tile_x;
+    int enemy_tile_y;
+    int rel_x;
+    int rel_y;
+    float offset_x;
+    float offset_y;
+    int draw_x;
+    int draw_y;
+    int radius;
+    int bx;
+    int by;
+    int px;
+    int py;
+} t_emini;
+
 typedef struct s_move {
 	int move_w;
 	int move_a;
@@ -168,7 +186,6 @@ typedef struct s_movestat{
 	int ipx;
 	int ipx_add_xo;
 	int ipx_sub_xo;
-
 	int ipy;
 	int ipy_add_yo;
 	int ipy_sub_yo;
@@ -181,10 +198,18 @@ typedef struct s_sprite {
 	float x;
 	float y;
 	float z;
-	int stuck_counter;
-    int escape_mode;
-    int escape_dir;
-    int escape_success_count;
+	int left;
+	int right;
+	int down;
+	int up;
+	int stuck;
+	int t_left;
+	int t_right;
+	int t_down;
+	int t_up;
+	int lx;
+	int ly;
+	int stuck_timer; // frame/time counter for checking
 } t_sprite;
 
 typedef struct s_minimap
@@ -227,6 +252,44 @@ typedef struct s_ray {
 	float tan;
 } t_ray;
 
+typedef struct s_edraw {
+    int anim_sequence[16];
+    int anim_len;
+    struct timeval now;
+    double elapsed;
+    float sx;
+    float sy;
+    float sin_pa;
+    float cos_pa;
+    float dx;
+    float dy;
+    float fov_scale;
+    float proj_x;
+    float sprite_height;
+    int sprite_size;
+    int max_sprite_size;
+    float lineH;
+    int floorY;
+    int screen_x;
+    int screen_y;
+    int frame;
+    t_img *cur_img;
+    int px;
+    int ray_idx;
+    int py;
+    int tx;
+    int ty;
+    int offset;
+    char *pixel;
+    unsigned char b;
+    unsigned char g;
+    unsigned char r;
+    unsigned char a;
+    int color;
+    int x;
+    int y;
+} t_edraw;
+
 
 typedef struct s_rayhit
 {
@@ -256,6 +319,18 @@ typedef struct s_gif {
 	t_img eight;
 } t_gif;
 
+typedef struct s_bfs {
+    int empty_spaces;
+    int ipx;
+    int ipy;
+    int dirs[4][2];
+    int *queue_x;
+    int *queue_y;
+    bool **reachable;
+    int front;
+    int rear;
+} t_bfs;
+
 typedef struct s_var {
     void *mlx;
     void *win;
@@ -271,7 +346,7 @@ typedef struct s_var {
 	struct timeval last_time;
 	t_minimap minimap;
 	t_sprite *sprites;
-	float zbuffer[NUM_RAYS]; // size = NUM_RAYS or WINDOW_WIDTH
+	float zbuffer[NUM_RAYS];
 	t_gif gif;
 	int current_anim_index;
 	struct timeval last_anim_time;
@@ -317,7 +392,6 @@ int		element_err(int line);
 /*------------------------------WINDOW------------------------------*/
 
 // from window.c
-
 int	create_visual(t_cub *cube);
 int	close_window(t_var *data);
 int render(t_var *data);
@@ -330,6 +404,23 @@ void init_all(t_var *data, t_cub *cube);
 // from window_utils.c
 void my_mlx_pixel_put(t_img *img, int x, int y, int color);
 void create_image_buffer(t_var *data);
+
+// from init_win.c
+void place_winning_tiles(t_var *data);
+void change_to_win(t_var *data, t_bfs *bfs, int index);
+
+// from init_enemy.c
+void load_single_gif_frame(t_var *data, t_img *img, const char *path);
+void load_enemy_gifs(t_var *data);
+void place_enemy(t_var *data, t_bfs *bfs);
+void init_sprites(t_var *data);
+
+// from init_enemy_bfs.c
+void init_dir(t_var *data, t_bfs *bfs);
+void init_bfs(t_var *data, t_bfs *bfs);
+void bfs_check(t_var *data, t_bfs *bfs, int nx, int ny);
+void do_bfs(t_var *data, t_bfs *bfs);
+
 
 /*------------------------------MINIMAP------------------------------*/
 
@@ -361,6 +452,7 @@ void update_movement(t_var *data);
 void movement_init(t_var *data, t_movestat *movestat);
 void movement_ws(t_var *data, t_movestat *movestat);
 void movement_da(t_var *data, t_movestat *movestat);
+void win(t_var *data);
 
 //from movement.c
 int handle_keypress(int keysym, t_var *data);
@@ -388,8 +480,37 @@ void cast_horizontal (t_var *data, t_ray * ray);
 void horizontal_dof(t_var* data, t_ray* ray);
 bool is_wall(t_map *map, int x, int y);
 
+/*------------------------------ENEMY------------------------------*/
+
 // from enemy_sprites.c
-void draw_sprites(t_var *data);
+int is_player_caught(t_sprite *sp, t_play *player, float radius);
+bool is_valid(t_var *data, int x, int y, bool visited[data->map.height][data->map.width], t_sprite *current_enemy);
+int bfs(t_var *data, Point start, Point goal, Point path[], int *path_len, t_sprite *current_enemy);
+void clamp_position_to_walls(t_var *data, t_sprite *sp);
+void resolve_enemy_collisions(t_var *data, t_sprite *sp);
+void move_enemy_towards_player(t_var *data, t_sprite *sp);
+
+// from enemy_minimap.c
 void draw_enemies_minimap(t_var *data);
+void draw_enemies_init(t_var *data, t_emini *mini, int i);
+void draw_enemies_loop(t_var *data, t_emini *mini);
+
+
+// from enemy_draw.c
+float calculate_distance(t_var *data, t_sprite *sp);
+void sort_sprites_by_distance(t_var *data);
+void init_seq(t_edraw *draw);
+void init_enemy_draw(t_var *data, t_edraw *draw);
+int enemy_size(t_var *data, t_edraw *draw, t_sprite *sp);
+
+// from enemy_draw_helper.c
+void select_frame(t_var *data, t_edraw *draw);
+void screen_rgba(t_var *data, t_edraw *draw);
+void screen_draw_helper(t_var *data, t_edraw *draw);
+void screen_draw(t_var *data, t_edraw *draw);
+void draw_sprites(t_var *data);
+
+
+
 
 #endif

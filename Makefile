@@ -21,6 +21,9 @@ SRCS_NORMAL = get_next_line/get_next_line.c \
 		window/window.c \
 		window/window_utils.c \
 		window/init_struct.c \
+		window/init_win.c \
+		window/init_enemy.c \
+		window/init_enemy_bfs.c \
 		minimap/minimap.c \
 		player/player.c \
 		movement/movement.c \
@@ -29,8 +32,10 @@ SRCS_NORMAL = get_next_line/get_next_line.c \
 		raycast/raycast.c \
 		raycast/raycast_3d.c \
 		raycast/raycast_helper.c \
-		raycast/enemy_sprites.c \
-		enemy/enemy.c \
+		enemy/enemy_sprites.c \
+		enemy/enemy_minimap.c \
+		enemy/enemy_draw.c \
+		enemy/enemy_draw_helper.c \
 
 OBJS = $(SRCS_NORMAL:.c=.o)
 
