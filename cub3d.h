@@ -210,6 +210,9 @@ typedef struct s_sprite {
 	int lx;
 	int ly;
 	int stuck_timer; // frame/time counter for checking
+	float stuck_escape_x;  // New: Escape direction tracking
+    float stuck_escape_y;
+    int stuck_escape_timer;
 } t_sprite;
 
 typedef struct s_minimap

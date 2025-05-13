@@ -43,190 +43,85 @@ bool is_cell_valid(t_var *data, int x, int y) {
 }
 
 void move_enemy_towards_player(t_var *data, t_sprite *sp) {
-    int spx = (int)(sp->x / TILE_SIZE);
-    int spy = (int)(sp->y / TILE_SIZE);
-    float speed = 0.1f;
-    float offset = 10;
+    const float SPEED = 0.3f;
+    const float STUCK_THRESHOLD = 25.0f;  // Distance to consider unstuck
+    const int MAX_ESCAPE_ATTEMPTS = 120;  // 2 seconds at 60 FPS
 
-    int spx_left = (int)((sp->x - speed - offset) / TILE_SIZE);
-    int spx_right = (int)((sp->x + speed + offset) / TILE_SIZE);
-    int spy_up = (int)((sp->y - speed - offset) / TILE_SIZE);
-    int spy_down = (int)((sp->y + speed + offset) / TILE_SIZE);
+    float dx = data->player.px - sp->x;
+    float dy = data->player.py - sp->y;
+    float distance_to_player = sqrtf(dx*dx + dy*dy);
 
-    // === Stuck check every 5 seconds ===
-    sp->stuck_timer++;
-    if (sp->stuck_timer >= 300) { // Assuming ~60 FPS
-        float dx = fabsf(sp->x - sp->lx);
-        float dy = fabsf(sp->y - sp->ly);
-        float dist = sqrtf(dx * dx + dy * dy);
+    // Normalize direction vector
+    if (distance_to_player > 0) {
+        dx /= distance_to_player;
+        dy /= distance_to_player;
+    }
 
-        printf("Enemy distance moved in 5 sec: %.2f\n", dist);
-
-        if (dist < 16.0f) {
-            sp->stuck = 1;
-            printf("Enemy marked as stuck due to low movement\n");
+    // --- Stuck System ---
+    if (sp->stuck) {
+        // Track how long we've been trying to escape
+        sp->stuck_escape_timer++;
+        
+        // Continue moving in escape direction if possible
+        float escape_dx = sp->stuck_escape_x;
+        float escape_dy = sp->stuck_escape_y;
+        
+        int new_x = (int)((sp->x + escape_dx * SPEED) / TILE_SIZE);
+        int new_y = (int)((sp->y + escape_dy * SPEED) / TILE_SIZE);
+        
+        if (is_cell_valid(data, new_x, new_y)) {
+            sp->x += escape_dx * SPEED;
+            sp->y += escape_dy * SPEED;
         }
-        sp->lx = sp->x;
-        sp->ly = sp->y;
-        sp->stuck_timer = 0;
-    }
-
-    // === Try to move directly toward player ===
-    if (!sp->stuck && sp->x > data->player.px && is_cell_valid(data, spx_left, spy)) {
-        sp->x -= speed;
-    }
-    if (!sp->stuck && sp->x < data->player.px && is_cell_valid(data, spx_right, spy)) {
-        sp->x += speed;
-    }
-    if (!sp->stuck && sp->y > data->player.py && is_cell_valid(data, spx, spy_up)) {
-        sp->y -= speed;
-    }
-    if (!sp->stuck && sp->y < data->player.py && is_cell_valid(data, spx, spy_down)) {
-        sp->y += speed;
-    }
-
-    // === If not already stuck, but failed to reach target ===
-    // if (!sp->stuck) {
-    //     if (sp->x > data->player.px && abs(sp->x - data->player.px) > 10)
-    //         sp->t_left = 1;
-    //     else if (sp->x < data->player.px && abs(sp->x - data->player.px) > 10)
-    //         sp->t_right = 1;
-    //     else if (sp->y > data->player.py && abs(sp->y - data->player.py) > 10)
-    //         sp->t_up = 1;
-    //     else if (sp->y < data->player.py && abs(sp->y - data->player.py) > 10)
-    //         sp->t_down = 1;
-    // }
-
-    if (sp->stuck && !sp->t_left && !sp->t_right && !sp->t_down && !sp->t_up)
-    {
-        printf("Enemy stuck at (%.2f, %.2f). Player at (%.2f, %.2f)\n", sp->x, sp->y, data->player.px, data->player.py);
-        if (sp->x > data->player.px && abs(sp->x - data->player.px) > 5) {
-            sp->t_left = 1;
-            printf("Trying to move left around obstacle\n");
-        }
-        if (sp->x < data->player.px && abs(sp->x - data->player.px) > 5) {
-            sp->t_right = 1;
-            printf("Trying to move right around obstacle\n");
-        }
-        if (sp->y > data->player.py && abs(sp->y - data->player.py) > 5) {
-            sp->t_up = 1;
-            printf("Trying to move up around obstacle\n");
-        }
-        if (sp->y < data->player.py && abs(sp->y - data->player.py) > 5) {
-            sp->t_down = 1;
-            printf("Trying to move down around obstacle\n");
-        }
-    }
-
-
-    // === Stuck Movement Logic ===
-    if (sp->stuck && sp->t_left) {
-        printf("gogogo\n");
-        if (sp->up == 0 && sp->down == 0)
-            sp->up = 1;
-
-        if (sp->up && is_cell_valid(data, spx, spy_up))
-            sp->y -= speed;
         else {
-            sp->up = 0;
-            sp->down = 1;
+            // Find new escape direction perpendicular to player direction
+            float temp = escape_dx;
+            sp->stuck_escape_x = -escape_dy;
+            sp->stuck_escape_y = temp;
         }
 
-        if (sp->down && is_cell_valid(data, spx, spy_down))
-            sp->y += speed;
-        else {
-            sp->t_left = 0;
+        // Check if we've moved enough to become unstuck
+        float moved_distance = sqrtf(powf(sp->x - sp->lx, 2) + powf(sp->y - sp->ly, 2));
+        if (moved_distance > STUCK_THRESHOLD || sp->stuck_escape_timer > MAX_ESCAPE_ATTEMPTS) {
             sp->stuck = 0;
-            sp->up = 0;
-            sp->down = 0;
-        }
-
-        if (is_cell_valid(data, spx_left, spy)) {
-            sp->t_left = 0;
-            sp->stuck = 0;
-            sp->up = 0;
-            sp->down = 0;
+            sp->stuck_escape_timer = 0;
+            printf("Enemy unstuck!\n");
         }
     }
-    else if (sp->stuck && sp->t_right) {
-        if (sp->up == 0 && sp->down == 0)
-            sp->up = 1;
-
-        if (sp->up && is_cell_valid(data, spx, spy_up))
-            sp->y -= speed;
-        else {
-            sp->up = 0;
-            sp->down = 1;
+    else {
+        // --- Normal Movement ---
+        float target_x = sp->x + dx * SPEED;
+        float target_y = sp->y + dy * SPEED;
+        
+        // Check X movement
+        int new_spx = (int)(target_x / TILE_SIZE);
+        if (is_cell_valid(data, new_spx, (int)(sp->y / TILE_SIZE))) {
+            sp->x = target_x;
+        }
+        
+        // Check Y movement
+        int new_spy = (int)(target_y / TILE_SIZE);
+        if (is_cell_valid(data, (int)(sp->x / TILE_SIZE), new_spy)) {
+            sp->y = target_y;
         }
 
-        if (sp->down && is_cell_valid(data, spx, spy_down))
-            sp->y += speed;
-        else {
-            sp->t_right = 0;
-            sp->stuck = 0;
-            sp->up = 0;
-            sp->down = 0;
-        }
-
-        if (is_cell_valid(data, spx_right, spy)) {
-            sp->t_right = 0;
-            sp->stuck = 0;
-            sp->up = 0;
-            sp->down = 0;
-        }
-    }
-    else if (sp->stuck && sp->t_up) {
-        if (sp->left == 0 && sp->right == 0)
-            sp->left = 1;
-
-        if (sp->left && is_cell_valid(data, spx_left, spy))
-            sp->x -= speed;
-        else {
-            sp->left = 0;
-            sp->right = 1;
-        }
-
-        if (sp->right && is_cell_valid(data, spx_right, spy))
-            sp->x += speed;
-        else {
-            sp->t_up = 0;
-            sp->stuck = 0;
-            sp->left = 0;
-            sp->right = 0;
-        }
-
-        if (is_cell_valid(data, spx, spy_up)) {
-            sp->t_up = 0;
-            sp->stuck = 0;
-            sp->left = 0;
-            sp->right = 0;
-        }
-    }
-    else if (sp->stuck && sp->t_down) {
-        if (sp->left == 0 && sp->right == 0)
-            sp->left = 1;
-
-        if (sp->left && is_cell_valid(data, spx_left, spy))
-            sp->x -= speed;
-        else {
-            sp->left = 0;
-            sp->right = 1;
-        }
-
-        if (sp->right && is_cell_valid(data, spx_right, spy))
-            sp->x += speed;
-        else {
-            sp->t_down = 0;
-            sp->stuck = 0;
-            sp->left = 0;
-            sp->right = 0;
-        }
-
-        if (is_cell_valid(data, spx, spy_down)) {
-            sp->t_down = 0;
-            sp->stuck = 0;
-            sp->left = 0;
-            sp->right = 0;
+        // --- Stuck Detection ---
+        sp->stuck_timer++;
+        if (sp->stuck_timer >= 300) {  // 5 seconds at 60 FPS
+            float moved_dist = sqrtf(powf(sp->x - sp->lx, 2) + powf(sp->y - sp->ly, 2));
+            
+            if (moved_dist < 16.0f) {
+                sp->stuck = 1;
+                sp->stuck_escape_x = -dy;  // Initial perpendicular direction
+                sp->stuck_escape_y = dx;
+                sp->lx = sp->x;
+                sp->ly = sp->y;
+                printf("Enemy stuck! Trying escape direction: (%.2f, %.2f)\n", 
+                      sp->stuck_escape_x, sp->stuck_escape_y);
+            }
+            sp->stuck_timer = 0;
+            sp->lx = sp->x;
+            sp->ly = sp->y;
         }
     }
 
