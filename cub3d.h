@@ -28,6 +28,7 @@
     # include "mac.h"
 # endif
 
+
 /*------------------------------MACRO------------------------------*/
 
 #define WINDOW_WIDTH 960
@@ -192,28 +193,33 @@ typedef struct s_movestat{
 } t_movestat;
 
 typedef struct s_sprite {
-	int type;
-	int state;
-	int map;
+	int sprite_size;
 	float x;
 	float y;
-	float z;
-	int left;
-	int right;
-	int down;
-	int up;
-	int stuck;
-	int t_left;
-	int t_right;
-	int t_down;
-	int t_up;
-	int lx;
-	int ly;
-	int stuck_timer; // frame/time counter for checking
-	float stuck_escape_x;  // New: Escape direction tracking
-    float stuck_escape_y;
-    int stuck_escape_timer;
+	float dx;
+    float dy;
+    float dist_sq;
+    float min_dist;
+    float dist;
+    float overlap;
+    float adjust_x;
+    float adjust_y;
+	float speed;
+    float margin;
+    float lil_margin;
+    int spx;
+    int spy;
+    int spx_left;
+    int spx_right;
+    int spy_up;
+    int spy_down;
+	int is_unstucking;
 } t_sprite;
+
+typedef struct s_direction {
+    int dx;
+    int dy;
+} t_direction;
 
 typedef struct s_minimap
 {
@@ -322,6 +328,14 @@ typedef struct s_gif {
 	t_img eight;
 } t_gif;
 
+typedef struct s_place {
+	int count;
+    int index;
+    int i;
+    int y;
+    int x;
+} t_place;
+
 typedef struct s_bfs {
     int empty_spaces;
     int ipx;
@@ -332,7 +346,42 @@ typedef struct s_bfs {
     bool **reachable;
     int front;
     int rear;
+
+	int **prev_y;
+	int **prev_x;
 } t_bfs;
+
+typedef struct s_enemy_bfs {
+    int *queue_x;
+    int *queue_y;
+    int front;
+    int rear;
+
+    bool **visited;
+    int **prev_x;
+    int **prev_y;
+
+    int dir[4][2];
+
+    int width;
+    int height;
+    int goal_x;
+    int goal_y;
+	int start_x;
+	int start_y;
+
+    int size;
+    int x;
+    int y;
+    int i;
+    int nx;
+    int ny;
+    int tpx;
+    int tpy;
+    int px;
+    int py;
+} t_enemy_bfs;
+
 
 typedef struct s_var {
     void *mlx;
@@ -417,6 +466,7 @@ void load_single_gif_frame(t_var *data, t_img *img, const char *path);
 void load_enemy_gifs(t_var *data);
 void place_enemy(t_var *data, t_bfs *bfs);
 void init_sprites(t_var *data);
+void place_enemy_helper(t_var *data, t_bfs *bfs, t_place *enemy);
 
 // from init_enemy_bfs.c
 void init_dir(t_var *data, t_bfs *bfs);
@@ -487,17 +537,33 @@ bool is_wall(t_map *map, int x, int y);
 
 // from enemy_sprites.c
 int is_player_caught(t_sprite *sp, t_play *player, float radius);
-bool is_valid(t_var *data, int x, int y, bool visited[data->map.height][data->map.width], t_sprite *current_enemy);
-int bfs(t_var *data, Point start, Point goal, Point path[], int *path_len, t_sprite *current_enemy);
-void clamp_position_to_walls(t_var *data, t_sprite *sp);
+bool is_cell_valid(t_var *data, int x, int y);
+void resolve_enemy_dist(t_var *data, t_sprite *sp, t_sprite *other);
 void resolve_enemy_collisions(t_var *data, t_sprite *sp);
 void move_enemy_towards_player(t_var *data, t_sprite *sp);
+
+// from enemy_move.c
+int enemy_left(t_var *data, t_sprite *sp);
+int enemy_right(t_var *data, t_sprite *sp);
+int enemy_up(t_var *data, t_sprite *sp);
+int enemy_down(t_var *data, t_sprite *sp);
+
+// from enemy_unstuck.c
+void ebfs_five(t_direction *step,t_enemy_bfs *bfs);
+t_direction find_first_step_to_player(char **map, t_enemy_bfs *bfs);
+void unstuck_move(t_var *data, t_sprite *sp);
+
+// from enemy_unstuck_helper.c
+void ebfs_one(t_enemy_bfs *bfs);
+void ebfs_two(t_enemy_bfs *bfs);
+void ebfs_three(t_enemy_bfs *bfs);
+void ebfs_four_helper(char **map,t_enemy_bfs *bfs);
+void ebfs_four(char **map, t_enemy_bfs *bfs);
 
 // from enemy_minimap.c
 void draw_enemies_minimap(t_var *data);
 void draw_enemies_init(t_var *data, t_emini *mini, int i);
 void draw_enemies_loop(t_var *data, t_emini *mini);
-
 
 // from enemy_draw.c
 float calculate_distance(t_var *data, t_sprite *sp);

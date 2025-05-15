@@ -24,32 +24,74 @@ void load_enemy_gifs(t_var *data)
     load_single_gif_frame(data, &data->gif.eight, "textures/hangy-8.xpm");
 }
 
+void forbidden_enemy(t_var *data, t_bfs *bfs)
+{
+    int y;
+    int x;
+
+    y = bfs->ipy - 5;
+    while (y <= bfs->ipy + 5)
+    {
+        x = bfs->ipx - 5;
+        while (x <= bfs->ipx + 5)
+        {
+            if (y >= 0 && y < data->map.height && x >= 0 && x < data->map.width)
+            {
+                if (bfs->reachable[y][x] == true)
+                {
+                    bfs->reachable[y][x] = false;
+                    bfs->empty_spaces--;
+                }
+            }
+            x++;
+        }
+        y++;
+    }
+}
+
+void place_enemy_helper(t_var *data, t_bfs *bfs, t_place *enemy)
+{
+    enemy->x = 0;
+    while (enemy->x < data->map.width)
+    {
+        if (bfs->reachable[enemy->y][enemy->x] == true)
+        {
+            if (enemy->i == enemy->index)
+            {
+                bfs->reachable[enemy->y][enemy->x] = false;
+                bfs->empty_spaces--;
+                data->sprites[enemy->count].x = enemy->x * 32 + 16;
+                data->sprites[enemy->count].y = enemy->y * 32 + 16;
+                enemy->count++;
+                break;
+            }
+            enemy->i++;
+        }
+        enemy->x++;
+    }
+}
+
 void place_enemy(t_var *data, t_bfs *bfs)
 {
-    int count;
-    int attempts;
-    int rx;
-    int ry;
+    t_place enemy;
 
-    count = 0;
-    attempts = 0;
-    while (count < data->num_sprites && attempts++ < bfs->empty_spaces)
+    enemy = (t_place){0};
+    enemy.count = 0;
+    forbidden_enemy(data, bfs);
+    while (enemy.count < data->num_sprites && bfs->empty_spaces > 0)
     {
-        rx = rand() % data->map.width;
-        ry = rand() % data->map.height;
-        if (bfs->reachable[ry][rx] && 
-            !(rx == bfs->ipx && ry == bfs->ipy) &&
-            abs(rx - bfs->ipx) >= 5 && 
-            abs(ry - bfs->ipy) >= 5)
+        enemy.index = rand() % bfs->empty_spaces;
+        enemy.i = 0;
+        enemy.y = 0;
+        while (enemy.y < data->map.height)
         {
-            data->sprites[count].type = 2;
-            data->sprites[count].x = rx * 32 + 16;
-            data->sprites[count].y = ry * 32 + 16;
-            data->sprites[count].z = 0;
-            count++;
+            place_enemy_helper(data, bfs, &enemy);
+            if (enemy.count > 0 && enemy.i == enemy.index)
+                break;
+            enemy.y++;
         }
     }
-    data->num_sprites = count;
+    data->num_sprites = enemy.count;
 }
 
 void init_sprites(t_var *data)

@@ -9,8 +9,8 @@ int main(int argc, char **argv)
 		return (ft_putstr_fd("./cub3d map.cub\n", 1), 1);
 	cub.map = (t_map){0};
 	cub.map.name = argv[1];
-	// cub.map.name = "map/valid.cub";
-	cub.map.name = "map/test.cub";
+	cub.map.name = "map/valid.cub";
+	// cub.map.name = "map/test.cub";
 	if (extract_map(&cub.map) == 1)
 		return (1);
 	if (create_visual(&cub))

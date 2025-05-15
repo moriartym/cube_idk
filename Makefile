@@ -36,6 +36,9 @@ SRCS_NORMAL = get_next_line/get_next_line.c \
 		enemy/enemy_minimap.c \
 		enemy/enemy_draw.c \
 		enemy/enemy_draw_helper.c \
+		enemy/enemy_move.c \
+		enemy/enemy_unstuck.c \
+		enemy/enemy_unstuck_helper.c \
 
 OBJS = $(SRCS_NORMAL:.c=.o)
 

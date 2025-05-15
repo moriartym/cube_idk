@@ -12,123 +12,85 @@ int is_player_caught(t_sprite *sp, t_play *player, float radius)
     return dist < radius;
 }
 
-void resolve_enemy_collisions(t_var *data, t_sprite *sp) {
-    for (int i = 0; i < data->num_sprites; ++i) {
-        t_sprite *other = &data->sprites[i];
-        if (other == sp) continue;
-
-        float dx = other->x - sp->x;
-        float dy = other->y - sp->y;
-        float dist_sq = dx*dx + dy*dy;
-        float min_dist = 10.0f; // Adjust based on enemy size
-
-        if (dist_sq < min_dist * min_dist && dist_sq > 0) {
-            float dist = sqrt(dist_sq);
-            float overlap = (min_dist - dist) / 2.0f;
-            float adjust_x = (dx / dist) * overlap;
-            float adjust_y = (dy / dist) * overlap;
-
-            sp->x -= adjust_x;
-            sp->y -= adjust_y;
-            other->x += adjust_x;
-            other->y += adjust_y;
-        }
-    }
-}
-
-bool is_cell_valid(t_var *data, int x, int y) {
+bool is_cell_valid(t_var *data, int x, int y)
+{
     if (x < 0 || x >= data->map.width || y < 0 || y >= data->map.height)
         return false;
     return (data->map.arr[y][x] != '1' && data->map.arr[y][x] != '2');
 }
 
-void move_enemy_towards_player(t_var *data, t_sprite *sp) {
-    const float SPEED = 0.3f;
-    const float STUCK_THRESHOLD = 25.0f;  // Distance to consider unstuck
-    const int MAX_ESCAPE_ATTEMPTS = 120;  // 2 seconds at 60 FPS
-
-    float dx = data->player.px - sp->x;
-    float dy = data->player.py - sp->y;
-    float distance_to_player = sqrtf(dx*dx + dy*dy);
-
-    // Normalize direction vector
-    if (distance_to_player > 0) {
-        dx /= distance_to_player;
-        dy /= distance_to_player;
+void resolve_enemy_dist(t_var *data, t_sprite *sp, t_sprite *other)
+{
+    float sp_new_x;
+    float sp_new_y;
+    float other_new_x;
+    float other_new_y;
+    
+    if (sp->dist_sq < sp->min_dist * sp->min_dist && sp->dist_sq > 0)
+    {
+        sp->dist = sqrt(sp->dist_sq);
+        sp->overlap = (sp->min_dist - sp->dist) / 2.0f;
+        sp->adjust_x = (sp->dx / sp->dist) * sp->overlap;
+        sp->adjust_y = (sp->dy / sp->dist) * sp->overlap;
+        sp_new_x = sp->x - sp->adjust_x;
+        sp_new_y = sp->y - sp->adjust_y;
+        other_new_x = other->x + sp->adjust_x;
+        other_new_y = other->y + sp->adjust_y;
+        if (is_cell_valid(data, (int)sp_new_x/TILE_SIZE, (int)sp->y/TILE_SIZE))
+            sp->x = sp_new_x;
+        if (is_cell_valid(data, (int)sp->x/TILE_SIZE, (int)sp_new_y/TILE_SIZE))
+            sp->y = sp_new_y;
+        if (is_cell_valid(data, (int)other_new_x/TILE_SIZE, (int)other->y/TILE_SIZE))
+            other->x = other_new_x;
+        if (is_cell_valid(data, (int)other->x/TILE_SIZE, (int)other_new_y/TILE_SIZE))
+            other->y = other_new_y;
     }
+}
 
-    // --- Stuck System ---
-    if (sp->stuck) {
-        // Track how long we've been trying to escape
-        sp->stuck_escape_timer++;
-        
-        // Continue moving in escape direction if possible
-        float escape_dx = sp->stuck_escape_x;
-        float escape_dy = sp->stuck_escape_y;
-        
-        int new_x = (int)((sp->x + escape_dx * SPEED) / TILE_SIZE);
-        int new_y = (int)((sp->y + escape_dy * SPEED) / TILE_SIZE);
-        
-        if (is_cell_valid(data, new_x, new_y)) {
-            sp->x += escape_dx * SPEED;
-            sp->y += escape_dy * SPEED;
-        }
-        else {
-            // Find new escape direction perpendicular to player direction
-            float temp = escape_dx;
-            sp->stuck_escape_x = -escape_dy;
-            sp->stuck_escape_y = temp;
-        }
+void resolve_enemy_collisions(t_var *data, t_sprite *sp)
+{
+    int i;
+    t_sprite *other;
 
-        // Check if we've moved enough to become unstuck
-        float moved_distance = sqrtf(powf(sp->x - sp->lx, 2) + powf(sp->y - sp->ly, 2));
-        if (moved_distance > STUCK_THRESHOLD || sp->stuck_escape_timer > MAX_ESCAPE_ATTEMPTS) {
-            sp->stuck = 0;
-            sp->stuck_escape_timer = 0;
-            printf("Enemy unstuck!\n");
+    i = 0;
+    while (i < data->num_sprites)
+    {
+        other = &data->sprites[i];
+        if (other == sp) 
+        {
+            i++;
+            continue;
         }
+        sp->dx = other->x - sp->x;
+        sp->dy = other->y - sp->y;
+        sp->dist_sq = sp->dx * sp->dx + sp->dy * sp->dy;
+        sp->min_dist = 10.0f;
+        resolve_enemy_dist(data,sp, other);
+        i++;
     }
-    else {
-        // --- Normal Movement ---
-        float target_x = sp->x + dx * SPEED;
-        float target_y = sp->y + dy * SPEED;
-        
-        // Check X movement
-        int new_spx = (int)(target_x / TILE_SIZE);
-        if (is_cell_valid(data, new_spx, (int)(sp->y / TILE_SIZE))) {
-            sp->x = target_x;
-        }
-        
-        // Check Y movement
-        int new_spy = (int)(target_y / TILE_SIZE);
-        if (is_cell_valid(data, (int)(sp->x / TILE_SIZE), new_spy)) {
-            sp->y = target_y;
-        }
+}
 
-        // --- Stuck Detection ---
-        sp->stuck_timer++;
-        if (sp->stuck_timer >= 300) {  // 5 seconds at 60 FPS
-            float moved_dist = sqrtf(powf(sp->x - sp->lx, 2) + powf(sp->y - sp->ly, 2));
-            
-            if (moved_dist < 16.0f) {
-                sp->stuck = 1;
-                sp->stuck_escape_x = -dy;  // Initial perpendicular direction
-                sp->stuck_escape_y = dx;
-                sp->lx = sp->x;
-                sp->ly = sp->y;
-                printf("Enemy stuck! Trying escape direction: (%.2f, %.2f)\n", 
-                      sp->stuck_escape_x, sp->stuck_escape_y);
-            }
-            sp->stuck_timer = 0;
-            sp->lx = sp->x;
-            sp->ly = sp->y;
-        }
+void move_enemy_towards_player(t_var *data, t_sprite *sp)
+{
+    sp->speed = 0.15f;
+    sp->margin = 5.0f;
+    sp->lil_margin = 0.15f;
+    sp->spx = (int)(sp->x / TILE_SIZE);
+    sp->spy = (int)(sp->y / TILE_SIZE);
+    sp->spx_left = (int)((sp->x - sp->speed - sp->margin) / TILE_SIZE);
+    sp->spx_right = (int)((sp->x + sp->speed + sp->margin) / TILE_SIZE);
+    sp->spy_up = (int)((sp->y - sp->speed - sp->margin) / TILE_SIZE);
+    sp->spy_down = (int)((sp->y + sp->speed + sp->margin) / TILE_SIZE);
+    if (sp->is_unstucking)
+    {
+        unstuck_move(data, sp);
+        return ;
     }
-
+    enemy_left(data,sp);
+    enemy_right(data,sp);
+    enemy_up(data,sp);
+    enemy_down(data,sp);
     resolve_enemy_collisions(data, sp);
-
-    if (is_player_caught(sp, &data->player, 10.0f)) {
-        printf("Player caught!\n");
-        // Handle game over
-    }
+    if (is_player_caught(sp, &data->player, 10.0f))
+        printf("Player caught! 👻\n");
 }
