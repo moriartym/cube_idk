@@ -8,13 +8,13 @@ int enemy_left(t_var *data, t_sprite *sp)
         {
             if (!is_cell_valid(data, sp->spx_left, sp->spy_up) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->y += sp->lil_margin;
-                return (0);
+                sp->y += sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             if (!is_cell_valid(data, sp->spx_left, sp->spy_down) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->y -= sp->lil_margin;
-                return (0);
+                sp->y -= sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             sp->x -= sp->speed;
             return (0);
@@ -32,13 +32,13 @@ int enemy_right(t_var *data, t_sprite *sp)
         {
             if (!is_cell_valid(data, sp->spx_right, sp->spy_up) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->y += sp->lil_margin;
-                return (0);
+                sp->y += sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             if (!is_cell_valid(data, sp->spx_right, sp->spy_down) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->y -= sp->lil_margin;
-                return (0);
+                sp->y -= sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             sp->x += sp->speed;
             return (0);
@@ -56,13 +56,13 @@ int enemy_up(t_var *data, t_sprite *sp)
         {
             if (!is_cell_valid(data, sp->spx_left, sp->spy_up) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->x += sp->lil_margin;
-                return (0);
+                sp->x += sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             if (!is_cell_valid(data, sp->spx_right, sp->spy_up) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->x -= sp->lil_margin;
-                return (0);
+                sp->x -= sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             sp->y -= sp->speed;
             return (0);
@@ -80,13 +80,13 @@ int enemy_down(t_var *data, t_sprite *sp)
         {
             if (!is_cell_valid(data, sp->spx_left, sp->spy_down) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->x += sp->lil_margin;
-                return (0);
+                sp->x += sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             if (!is_cell_valid(data, sp->spx_right, sp->spy_down) && is_cell_valid(data, sp->spx, sp->spy))
             {
-                sp->x -= sp->lil_margin;
-                return (0);
+                sp->x -= sp->speed;
+                return ( sp->is_unstucking = 1,0);
             }
             sp->y += sp->speed;
             return (0);

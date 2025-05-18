@@ -31,10 +31,14 @@
 
 /*------------------------------MACRO------------------------------*/
 
-#define WINDOW_WIDTH 960
-#define WINDOW_WIDTH_W 1920
-#define WINDOW_HEIGHT 544
-#define WINDOW_HEIGHT_ 1088
+// #define WINDOW_WIDTH 960
+// #define WINDOW_HEIGHT 544
+// # define MINIMAP_SIZE 128
+
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1088
+# define MINIMAP_SIZE 256
+
 #define PLAYER_COLOR 0x00FF0000
 #define RAYCAST_COLOR 0x0000FF00
 #define WALL_COLOR 0x00AAAAAA
@@ -43,9 +47,7 @@
 #define EMPTY_COLOR 0x404040
 #define WIN_COLOR 0xFFD700
 
-# define MINIMAP_SIZE 128
 # define MINIMAP_TILE 8
-# define MINIMAP_SIZE_W 256
 
 #define STRIP_WIDTH 2
 #define CEILING_COLOR 0x444444
@@ -69,9 +71,6 @@
 #define SPRITE_SIZE 10
 #define SPRITE_SIZE_MAP 2
 #define ENEMY_COLOR 0xFFFF00 // Yellow
-
-
-
 
 /*------------------------------STRUCT------------------------------*/
 

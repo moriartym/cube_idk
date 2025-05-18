@@ -72,9 +72,8 @@ void resolve_enemy_collisions(t_var *data, t_sprite *sp)
 
 void move_enemy_towards_player(t_var *data, t_sprite *sp)
 {
-    sp->speed = 0.15f;
+    sp->speed = 0.3f;
     sp->margin = 5.0f;
-    sp->lil_margin = 0.15f;
     sp->spx = (int)(sp->x / TILE_SIZE);
     sp->spy = (int)(sp->y / TILE_SIZE);
     sp->spx_left = (int)((sp->x - sp->speed - sp->margin) / TILE_SIZE);
